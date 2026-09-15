@@ -222,6 +222,7 @@ function abrirFichaCliente(cliente, aoSalvar) {
           }).select().single();
           if (error) return toast.erro('Não foi possível criar o cliente. ' + error.message);
           toast.sucesso('Cliente criado.');
+          alterado = false;
           fechar();
           aoSalvar?.();
           return;
@@ -254,6 +255,7 @@ function abrirFichaCliente(cliente, aoSalvar) {
         }
 
         toast.sucesso('Alteração salva.');
+        alterado = false;
         fechar();
         aoSalvar?.();
       });
@@ -274,6 +276,7 @@ function abrirFichaCliente(cliente, aoSalvar) {
           const { error } = await supabase.rpc('rpc_inativar_cliente', { p_id: cliente.id, p_motivo: motivo });
           if (error) return toast.erro(error.message);
           toast.sucesso('Cliente inativado.');
+          alterado = false;
           fechar();
           aoSalvar?.();
         });

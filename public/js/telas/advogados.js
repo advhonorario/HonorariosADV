@@ -240,7 +240,7 @@ function abrirFichaAdvogado(advogado) {
           conta: corpo.querySelector('#f-conta').value.trim() || null,
           chave_pix: corpo.querySelector('#f-pix').value.trim() || null,
         };
-        await salvarAdvogado(null, patch, fechar);
+        await salvarAdvogado(null, patch, () => { alterado = false; fechar(); });
       });
 
       if (!ehNovo) renderExcecoes(corpo.querySelector('#lista-excecoes'), advogado.id);
@@ -263,6 +263,7 @@ function abrirFichaAdvogado(advogado) {
           if (error) return toast.erro(error.message);
           await store.recarregarAdvogado(advogado.id);
           toast.sucesso('Advogado inativado.');
+          alterado = false;
           fechar();
         });
         rodape.appendChild(btnInativar);
