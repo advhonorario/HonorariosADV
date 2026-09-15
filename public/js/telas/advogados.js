@@ -134,7 +134,7 @@ function abrirFichaAdvogado(advogado) {
             <div><label class="rotulo-campo" for="f-email">E-mail</label><input class="campo" id="f-email" type="email" value="${advogado?.email ?? ''}" /></div>
             <div><label class="rotulo-campo" for="f-telefone">Telefone</label><input class="campo" id="f-telefone" value="${advogado?.telefone ?? ''}" /></div>
           </div>
-          ${!ehNovo && podeEscrever() ? '<button class="botao botao-secundario" id="btn-salvar-identificacao">Salvar identificação</button>' : ''}
+          ${!ehNovo && podeEscrever() ? '<button class="botao botao-primario" id="btn-salvar-identificacao">Salvar identificação</button>' : ''}
         </section>
 
         <section class="gaveta-bloco">
@@ -155,7 +155,7 @@ function abrirFichaAdvogado(advogado) {
             <div><label class="rotulo-campo" for="f-conta">Conta</label><input class="campo" id="f-conta" value="${advogado?.conta ?? ''}" /></div>
             <div><label class="rotulo-campo" for="f-pix">Chave PIX</label><input class="campo" id="f-pix" value="${advogado?.chave_pix ?? ''}" /></div>
           </div>
-          ${!ehNovo && podeEscrever() ? '<button class="botao botao-secundario" id="btn-salvar-repasse">Salvar repasse</button>' : ''}
+          ${!ehNovo && podeEscrever() ? '<button class="botao botao-primario" id="btn-salvar-repasse">Salvar repasse</button>' : ''}
         </section>
 
         ${!ehNovo ? `<section class="gaveta-bloco">
