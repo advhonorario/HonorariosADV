@@ -261,6 +261,7 @@ function abrirFichaAdvogado(advogado) {
           if (motivo === null) return;
           const { error } = await supabase.rpc('rpc_inativar_advogado', { p_id: advogado.id, p_motivo: motivo });
           if (error) return toast.erro(error.message);
+          await store.recarregarAdvogado(advogado.id);
           toast.sucesso('Advogado inativado.');
           fechar();
         });
@@ -273,14 +274,16 @@ function abrirFichaAdvogado(advogado) {
 
 async function salvarAdvogado(advogado, patch, fechar) {
   if (!advogado) {
-    const { error } = await supabase.from('advogados').insert(patch);
+    const { data, error } = await supabase.from('advogados').insert(patch).select('id').single();
     if (error) return toast.erro('Não foi possível criar o advogado. ' + error.message);
+    await store.recarregarAdvogado(data.id);
     toast.sucesso('Advogado criado.');
     fechar();
     return;
   }
   const { error } = await supabase.from('advogados').update(patch).eq('id', advogado.id);
   if (error) return toast.erro('Não foi possível salvar. ' + error.message);
+  await store.recarregarAdvogado(advogado.id);
   toast.sucesso('Alteração salva.');
 }
 

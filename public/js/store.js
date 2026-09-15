@@ -19,6 +19,20 @@ async function recarregarAdvogado(id) {
   notificar('advogados');
 }
 
+async function recarregarTiposProcesso() {
+  const { data } = await supabase.from('tipos_processo').select('*').order('ordem');
+  tiposProcesso.clear();
+  (data ?? []).forEach((t) => tiposProcesso.set(t.id, t));
+  notificar('tiposProcesso');
+}
+
+async function recarregarTiposServico() {
+  const { data } = await supabase.from('tipos_servico').select('*').order('ordem');
+  tiposServico.clear();
+  (data ?? []).forEach((t) => tiposServico.set(t.id, t));
+  notificar('tiposServico');
+}
+
 export const store = {
   async init() {
     try {
@@ -87,6 +101,13 @@ export const store = {
 
   listarTiposProcesso() { return Array.from(tiposProcesso.values()).sort((a, b) => a.ordem - b.ordem); },
   listarTiposServico() { return Array.from(tiposServico.values()).sort((a, b) => a.ordem - b.ordem); },
+
+  // Atualização explícita e imediata do cache logo após uma escrita da própria
+  // aba — não depender só do Realtime (rede/latência/publicação mal configurada
+  // não devem deixar a lista desatualizada até um F5 manual).
+  recarregarAdvogado,
+  recarregarTiposProcesso,
+  recarregarTiposServico,
 
   on(entidade, fn) {
     if (!ouvintes.has(entidade)) ouvintes.set(entidade, new Set());

@@ -115,9 +115,15 @@ export function render(container) {
     if (podeEscrever()) habilitarArraste(tbody, dados, cfg);
   }
 
+  async function recarregarAba() {
+    if (abaAtual === 'processo') await store.recarregarTiposProcesso();
+    else await store.recarregarTiposServico();
+  }
+
   async function alternarAtivo(item, cfg) {
     const { error } = await supabase.from(cfg.tabela).update({ ativo: !item.ativo }).eq('id', item.id);
     if (error) return toast.erro('Não foi possível atualizar a situação.');
+    await recarregarAba();
     toast.sucesso('Situação atualizada.');
   }
 
@@ -148,6 +154,7 @@ export function render(container) {
       celulas.forEach((td) => { patch[td.dataset.campo] = td.querySelector('input').value; });
       const { error } = await supabase.from(cfg.tabela).update(patch).eq('id', item.id);
       if (error) return toast.erro('Não foi possível salvar. Confira os dados.');
+      await recarregarAba();
       toast.sucesso('Alteração salva.');
     });
     tdAcoes.appendChild(btnSalvar);
@@ -169,6 +176,7 @@ export function render(container) {
         if (de < para) tr.after(arrastando); else tr.before(arrastando);
         const novaOrdem = Array.from(tbody.children).map((el) => el.dataset.id);
         await Promise.all(novaOrdem.map((id, i) => supabase.from(cfg.tabela).update({ ordem: i }).eq('id', id)));
+        await recarregarAba();
         toast.sucesso('Ordem atualizada.');
       });
     });
@@ -189,6 +197,7 @@ export function render(container) {
       : { codigo: 'NOVO', nome: 'Novo tipo', natureza: 'fixo', percentual_sugerido: 0, ordem: store.listarTiposServico().length };
     const { error } = await supabase.from(cfg.tabela).insert(base);
     if (error) return toast.erro('Não foi possível criar. Código pode já existir.');
+    await recarregarAba();
     toast.sucesso('Tipo criado — edite os campos.');
   });
 
