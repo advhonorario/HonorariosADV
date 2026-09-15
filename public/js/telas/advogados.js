@@ -134,7 +134,7 @@ function abrirFichaAdvogado(advogado) {
             <div><label class="rotulo-campo" for="f-email">E-mail</label><input class="campo" id="f-email" type="email" value="${advogado?.email ?? ''}" /></div>
             <div><label class="rotulo-campo" for="f-telefone">Telefone</label><input class="campo" id="f-telefone" value="${advogado?.telefone ?? ''}" /></div>
           </div>
-          ${podeEscrever() ? '<button class="botao botao-secundario" id="btn-salvar-identificacao">Salvar identificação</button>' : ''}
+          ${!ehNovo && podeEscrever() ? '<button class="botao botao-secundario" id="btn-salvar-identificacao">Salvar identificação</button>' : ''}
         </section>
 
         <section class="gaveta-bloco">
@@ -155,7 +155,7 @@ function abrirFichaAdvogado(advogado) {
             <div><label class="rotulo-campo" for="f-conta">Conta</label><input class="campo" id="f-conta" value="${advogado?.conta ?? ''}" /></div>
             <div><label class="rotulo-campo" for="f-pix">Chave PIX</label><input class="campo" id="f-pix" value="${advogado?.chave_pix ?? ''}" /></div>
           </div>
-          ${podeEscrever() ? '<button class="botao botao-secundario" id="btn-salvar-repasse">Salvar repasse</button>' : ''}
+          ${!ehNovo && podeEscrever() ? '<button class="botao botao-secundario" id="btn-salvar-repasse">Salvar repasse</button>' : ''}
         </section>
 
         ${!ehNovo ? `<section class="gaveta-bloco">
@@ -163,6 +163,8 @@ function abrirFichaAdvogado(advogado) {
           <div id="lista-excecoes"></div>
           ${podeEscrever() ? '<button class="botao-texto" id="btn-add-excecao">+ adicionar exceção</button>' : ''}
         </section>` : ''}
+
+        ${ehNovo && podeEscrever() ? '<button class="botao botao-primario" id="btn-criar-advogado">Criar advogado</button>' : ''}
       `;
 
       corpo.querySelectorAll('input, select').forEach((el) => el.addEventListener('input', () => { alterado = true; }));
@@ -197,7 +199,7 @@ function abrirFichaAdvogado(advogado) {
         const conta = corpo.querySelector('#f-conta').value.trim() || null;
         const pix = corpo.querySelector('#f-pix').value.trim() || null;
 
-        if (!ehNovo && advogado.percentual_padrao !== novoPercentual) {
+        if (advogado.percentual_padrao !== novoPercentual) {
           const motivo = await abrirModalMotivo({
             titulo: 'Confirmar alteração',
             contexto: `Advogado ${advogado.nome}`,
@@ -211,8 +213,34 @@ function abrirFichaAdvogado(advogado) {
           if (error) return toast.erro(error.message);
         }
 
-        const patch = { percentual_padrao: novoPercentual, papel_preferencial: papel, banco, agencia, conta, chave_pix: pix };
-        await salvarAdvogado(advogado, ehNovo ? patch : { papel_preferencial: papel, banco, agencia, conta, chave_pix: pix }, fechar);
+        await salvarAdvogado(advogado, { papel_preferencial: papel, banco, agencia, conta, chave_pix: pix }, fechar);
+      });
+
+      corpo.querySelector('#btn-criar-advogado')?.addEventListener('click', async () => {
+        const cpf = corpo.querySelector('#f-cpf').value;
+        if (!validarCpfCnpj(cpf)) {
+          corpo.querySelector('#erro-cpf').innerHTML = '<div class="mensagem-erro">CPF/CNPJ inválido.</div>';
+          return;
+        }
+        corpo.querySelector('#erro-cpf').innerHTML = '';
+        const nome = corpo.querySelector('#f-nome').value.trim();
+        if (!nome) return toast.erro('Informe o nome do advogado.');
+
+        const patch = {
+          nome,
+          oab_numero: corpo.querySelector('#f-oab-numero').value.trim() || null,
+          oab_uf: corpo.querySelector('#f-oab-uf').value.trim() || null,
+          cpf_cnpj: cpf || null,
+          email: corpo.querySelector('#f-email').value.trim() || null,
+          telefone: corpo.querySelector('#f-telefone').value.trim() || null,
+          percentual_padrao: Number(corpo.querySelector('#f-percentual').value) || 0,
+          papel_preferencial: corpo.querySelector('#f-papel').value,
+          banco: corpo.querySelector('#f-banco').value.trim() || null,
+          agencia: corpo.querySelector('#f-agencia').value.trim() || null,
+          conta: corpo.querySelector('#f-conta').value.trim() || null,
+          chave_pix: corpo.querySelector('#f-pix').value.trim() || null,
+        };
+        await salvarAdvogado(null, patch, fechar);
       });
 
       if (!ehNovo) renderExcecoes(corpo.querySelector('#lista-excecoes'), advogado.id);

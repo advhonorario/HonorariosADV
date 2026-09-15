@@ -41,14 +41,14 @@ export function mascararCpfCnpj(valor) {
 
 function validarCpf(digitos) {
   if (digitos.length !== 11 || /^(\d)\1{10}$/.test(digitos)) return false;
-  const calcularDigito = (base) => {
+  const calcularDigito = (tamanho) => {
     let soma = 0;
-    for (let i = 0; i < base.length; i++) soma += Number(digitos[i]) * (base - i);
+    for (let i = 0; i < tamanho; i++) soma += Number(digitos[i]) * (tamanho + 1 - i);
     const resto = (soma * 10) % 11;
     return resto === 10 ? 0 : resto;
   };
-  const d1 = calcularDigito(10);
-  const d2 = calcularDigito(11);
+  const d1 = calcularDigito(9);
+  const d2 = calcularDigito(10);
   return d1 === Number(digitos[9]) && d2 === Number(digitos[10]);
 }
 
