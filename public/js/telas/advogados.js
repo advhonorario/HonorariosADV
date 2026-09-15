@@ -188,7 +188,7 @@ function abrirFichaAdvogado(advogado) {
           email: corpo.querySelector('#f-email').value.trim() || null,
           telefone: corpo.querySelector('#f-telefone').value.trim() || null,
         };
-        await salvarAdvogado(advogado, patch, fechar);
+        if (await salvarAdvogado(advogado, patch, fechar)) alterado = false;
       });
 
       corpo.querySelector('#btn-salvar-repasse')?.addEventListener('click', async () => {
@@ -213,7 +213,7 @@ function abrirFichaAdvogado(advogado) {
           if (error) return toast.erro(error.message);
         }
 
-        await salvarAdvogado(advogado, { papel_preferencial: papel, banco, agencia, conta, chave_pix: pix }, fechar);
+        if (await salvarAdvogado(advogado, { papel_preferencial: papel, banco, agencia, conta, chave_pix: pix }, fechar)) alterado = false;
       });
 
       corpo.querySelector('#btn-criar-advogado')?.addEventListener('click', async () => {
@@ -276,16 +276,17 @@ function abrirFichaAdvogado(advogado) {
 async function salvarAdvogado(advogado, patch, fechar) {
   if (!advogado) {
     const { data, error } = await supabase.from('advogados').insert(patch).select('id').single();
-    if (error) return toast.erro('Não foi possível criar o advogado. ' + error.message);
+    if (error) { toast.erro('Não foi possível criar o advogado. ' + error.message); return false; }
     await store.recarregarAdvogado(data.id);
     toast.sucesso('Advogado criado.');
     fechar();
-    return;
+    return true;
   }
   const { error } = await supabase.from('advogados').update(patch).eq('id', advogado.id);
-  if (error) return toast.erro('Não foi possível salvar. ' + error.message);
+  if (error) { toast.erro('Não foi possível salvar. ' + error.message); return false; }
   await store.recarregarAdvogado(advogado.id);
   toast.sucesso('Alteração salva.');
+  return true;
 }
 
 async function renderExcecoes(container, advogadoId) {
