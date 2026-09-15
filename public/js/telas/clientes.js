@@ -260,27 +260,46 @@ function abrirFichaCliente(cliente, aoSalvar) {
         aoSalvar?.();
       });
 
-      if (!ehNovo && podeEscrever() && cliente.ativo) {
+      if (!ehNovo && podeEscrever()) {
         const rodape = document.createElement('div');
         rodape.className = 'gaveta-rodape';
-        const btnInativar = document.createElement('button');
-        btnInativar.className = 'botao botao-perigo';
-        btnInativar.textContent = 'Inativar';
-        btnInativar.addEventListener('click', async () => {
-          const motivo = await abrirModalMotivo({
-            titulo: 'Inativar cliente',
-            contexto: `${cliente.nome} deixará de aparecer nos seletores de novos lançamentos.`,
-            categoriaMotivos: 'inativar_cliente',
+        const btn = document.createElement('button');
+        if (cliente.ativo) {
+          btn.className = 'botao botao-perigo';
+          btn.textContent = 'Inativar';
+          btn.addEventListener('click', async () => {
+            const motivo = await abrirModalMotivo({
+              titulo: 'Inativar cliente',
+              contexto: `${cliente.nome} deixará de aparecer nos seletores de novos lançamentos.`,
+              categoriaMotivos: 'inativar_cliente',
+            });
+            if (motivo === null) return;
+            const { error } = await supabase.rpc('rpc_inativar_cliente', { p_id: cliente.id, p_motivo: motivo });
+            if (error) return toast.erro(error.message);
+            toast.sucesso('Cliente inativado.');
+            alterado = false;
+            fechar();
+            aoSalvar?.();
           });
-          if (motivo === null) return;
-          const { error } = await supabase.rpc('rpc_inativar_cliente', { p_id: cliente.id, p_motivo: motivo });
-          if (error) return toast.erro(error.message);
-          toast.sucesso('Cliente inativado.');
-          alterado = false;
-          fechar();
-          aoSalvar?.();
-        });
-        rodape.appendChild(btnInativar);
+        } else {
+          btn.className = 'botao botao-primario';
+          btn.textContent = 'Ativar';
+          btn.addEventListener('click', async () => {
+            const motivo = await abrirModalMotivo({
+              titulo: 'Ativar cliente',
+              contexto: `${cliente.nome} volta a aparecer nos seletores de novos lançamentos.`,
+              categoriaMotivos: 'ativar_cliente',
+            });
+            if (motivo === null) return;
+            const { error } = await supabase.rpc('rpc_ativar_cliente', { p_id: cliente.id, p_motivo: motivo });
+            if (error) return toast.erro(error.message);
+            toast.sucesso('Cliente ativado.');
+            alterado = false;
+            fechar();
+            aoSalvar?.();
+          });
+        }
+        rodape.appendChild(btn);
         return rodape;
       }
     },

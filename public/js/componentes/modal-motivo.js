@@ -1,6 +1,8 @@
 const MOTIVOS_FREQUENTES = {
   inativar_advogado: ['Desligamento do escritório', 'Suspensão da OAB', 'Solicitação do próprio advogado', 'Outro'],
   inativar_cliente: ['Cliente sem processos ativos', 'Relacionamento encerrado', 'Cadastro duplicado', 'Outro'],
+  ativar_advogado: ['Retorno ao escritório', 'Inativação por engano', 'Fim da suspensão da OAB', 'Outro'],
+  ativar_cliente: ['Novo processo/relacionamento retomado', 'Inativação por engano', 'Outro'],
   percentual_padrao: ['Renegociação de contrato', 'Correção de cadastro', 'Promoção/mudança de papel', 'Outro'],
   remover_indicacao: ['Indicação encerrada por acordo', 'Erro de cadastro', 'Outro'],
 };

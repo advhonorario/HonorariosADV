@@ -246,27 +246,46 @@ function abrirFichaAdvogado(advogado) {
       if (!ehNovo) renderExcecoes(corpo.querySelector('#lista-excecoes'), advogado.id);
       corpo.querySelector('#btn-add-excecao')?.addEventListener('click', () => adicionarExcecao(advogado.id, corpo.querySelector('#lista-excecoes')));
 
-      if (!ehNovo && podeEscrever() && advogado.ativo) {
+      if (!ehNovo && podeEscrever()) {
         const rodape = document.createElement('div');
         rodape.className = 'gaveta-rodape';
-        const btnInativar = document.createElement('button');
-        btnInativar.className = 'botao botao-perigo';
-        btnInativar.textContent = 'Inativar';
-        btnInativar.addEventListener('click', async () => {
-          const motivo = await abrirModalMotivo({
-            titulo: 'Inativar advogado',
-            contexto: `${advogado.nome} deixará de aparecer nos seletores de novos lançamentos.`,
-            categoriaMotivos: 'inativar_advogado',
+        const btn = document.createElement('button');
+        if (advogado.ativo) {
+          btn.className = 'botao botao-perigo';
+          btn.textContent = 'Inativar';
+          btn.addEventListener('click', async () => {
+            const motivo = await abrirModalMotivo({
+              titulo: 'Inativar advogado',
+              contexto: `${advogado.nome} deixará de aparecer nos seletores de novos lançamentos.`,
+              categoriaMotivos: 'inativar_advogado',
+            });
+            if (motivo === null) return;
+            const { error } = await supabase.rpc('rpc_inativar_advogado', { p_id: advogado.id, p_motivo: motivo });
+            if (error) return toast.erro(error.message);
+            await store.recarregarAdvogado(advogado.id);
+            toast.sucesso('Advogado inativado.');
+            alterado = false;
+            fechar();
           });
-          if (motivo === null) return;
-          const { error } = await supabase.rpc('rpc_inativar_advogado', { p_id: advogado.id, p_motivo: motivo });
-          if (error) return toast.erro(error.message);
-          await store.recarregarAdvogado(advogado.id);
-          toast.sucesso('Advogado inativado.');
-          alterado = false;
-          fechar();
-        });
-        rodape.appendChild(btnInativar);
+        } else {
+          btn.className = 'botao botao-primario';
+          btn.textContent = 'Ativar';
+          btn.addEventListener('click', async () => {
+            const motivo = await abrirModalMotivo({
+              titulo: 'Ativar advogado',
+              contexto: `${advogado.nome} volta a aparecer nos seletores de novos lançamentos.`,
+              categoriaMotivos: 'ativar_advogado',
+            });
+            if (motivo === null) return;
+            const { error } = await supabase.rpc('rpc_ativar_advogado', { p_id: advogado.id, p_motivo: motivo });
+            if (error) return toast.erro(error.message);
+            await store.recarregarAdvogado(advogado.id);
+            toast.sucesso('Advogado ativado.');
+            alterado = false;
+            fechar();
+          });
+        }
+        rodape.appendChild(btn);
         return rodape;
       }
     },
