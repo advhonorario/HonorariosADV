@@ -1,0 +1,41 @@
+@import url('https://fonts.googleapis.com/css2?family=Spectral:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root {
+  /* tinta — autoridade, texto, estrutura */
+  --tinta-900:  #12332C;   /* títulos, valores, rail de navegação */
+  --tinta-700:  #1F4A40;   /* botão primário, links */
+  --tinta-500:  #35675B;   /* ícones ativos, segmentos de rateio */
+  --tinta-300:  #7FA096;   /* segmentos secundários de rateio */
+
+  /* papel — superfícies */
+  --papel:      #F3F5F4;   /* fundo da aplicação */
+  --papel-alto: #FFFFFF;   /* fichas, tabelas, modais */
+  --papel-baixo:#E8EDEA;   /* cabeçalho de tabela, campos desabilitados */
+  --linha:      #DCE2DF;   /* divisórias de 1px */
+
+  /* texto */
+  --texto:      #12332C;
+  --texto-2:    #4A5A54;   /* rótulos, metadados */
+  --texto-3:    #7C8A84;   /* placeholder, texto desabilitado */
+
+  /* sinalização — uso restrito */
+  --carimbo:    #8C2D26;   /* estorno, exclusão, erro */
+  --carimbo-bg: #F7EBE9;
+  --ambar:      #9C6F1C;   /* percentual alterado manualmente, pendência */
+  --ambar-bg:   #FAF2E2;
+  --confirma:   #2E7D62;   /* recebido, salvo */
+
+  /* forma */
+  --raio-ficha: 3px;       /* praticamente reto: ficha de papel, não cartão de app */
+  --raio-campo: 2px;
+  --raio-pilula:999px;     /* só em selos de status */
+  --sombra-modal: 0 24px 48px -12px rgba(18,51,44,.28);
+  --sombra-ficha: none;    /* fichas se separam por borda e fundo, não por sombra */
+
+  /* ritmo — base 4 */
+  --e1:4px; --e2:8px; --e3:12px; --e4:16px; --e5:24px; --e6:32px; --e7:48px;
+
+  /* tipografia */
+  --fonte-destaque: Spectral, Georgia, serif;
+  --fonte-interface: 'IBM Plex Sans', system-ui, sans-serif;
+}
