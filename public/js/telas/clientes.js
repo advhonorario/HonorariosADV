@@ -89,7 +89,7 @@ export function render(container) {
         tdS.appendChild(c.ativo ? criarSelo({ texto: 'ativo', tom: 'confirma' }) : criarSelo({ texto: 'inativo', tom: 'neutro' }));
         tr.appendChild(tdS);
       },
-      aoClicarLinha: (c) => abrirFichaCliente(c, renderLista),
+      aoClicarLinha: (c) => abrirFichaCliente(c, recarregarERenderizar),
     });
     listaEl.appendChild(tabela.el);
   }
