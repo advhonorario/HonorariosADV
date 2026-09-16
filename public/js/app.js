@@ -11,7 +11,7 @@ const ROTAS = {
   '#/painel': () => import('./telas/painel.js'),
   '#/logs': () => import('./telas/logs.js'),
 };
-const ROTA_PADRAO = '#/advogados'; // trocar para '#/lancar' quando a Fase 3 existir
+const ROTA_PADRAO = '#/lancar';
 
 const ITENS_RAIL = [
   { hash: '#/lancar', icone: 'icone-lancar', texto: 'Lançar' },

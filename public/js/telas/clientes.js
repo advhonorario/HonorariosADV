@@ -8,6 +8,7 @@ import { abrirModalMotivo } from '../componentes/modal-motivo.js';
 import { toast } from '../componentes/toast.js';
 import { formatarPercentual, formatarMoeda, mascararCpfCnpj, validarCpfCnpj, debounce } from '../formato.js';
 import { podeEscrever } from '../sessao.js';
+import { consumirAbrirNovo, voltarParaLancamento } from '../navegacao-cadastro.js';
 
 export const titulo = 'Clientes';
 
@@ -104,6 +105,10 @@ export function render(container) {
 
   desinscrever.push(store.on('advogados', renderLista));
   recarregarERenderizar();
+
+  if (consumirAbrirNovo() && podeEscrever()) {
+    abrirFichaCliente(null, () => { recarregarERenderizar(); voltarParaLancamento(); });
+  }
 }
 
 function abrirFichaCliente(cliente, aoSalvar) {

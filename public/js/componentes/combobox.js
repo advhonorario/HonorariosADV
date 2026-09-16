@@ -102,6 +102,10 @@ export function criarCombobox({ itens, campoTexto, campoValor, onSelecionar, pla
       valorAtual = valor;
       input.value = item ? item[campoTexto] : '';
     },
+    // Permite refletir mudanças do store (ex.: Realtime) sem recriar o combobox
+    // e perder o texto/foco atual — a lista filtrada só é reconsultada na
+    // próxima interação (input/focus), então não interrompe a digitação.
+    atualizarItens(novosItens) { itens = novosItens; },
     limpar() { selecionar(null); },
   };
 }

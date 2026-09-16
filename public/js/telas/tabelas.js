@@ -3,6 +3,7 @@ import { store } from '../store.js';
 import { criarSelo } from '../componentes/selo.js';
 import { toast } from '../componentes/toast.js';
 import { podeEscrever } from '../sessao.js';
+import { consumirAbrirNovo, voltarParaLancamento } from '../navegacao-cadastro.js';
 
 export const titulo = 'Tabelas';
 
@@ -127,7 +128,7 @@ export function render(container) {
     toast.sucesso('Situação atualizada.');
   }
 
-  function entrarModoEdicao(tr, item, cfg) {
+  function entrarModoEdicao(tr, item, cfg, opcoes = {}) {
     const celulas = tr.querySelectorAll('.celula-editavel');
     const valoresOriginais = {};
     celulas.forEach((td) => {
@@ -156,6 +157,7 @@ export function render(container) {
       if (error) return toast.erro('Não foi possível salvar. Confira os dados.');
       await recarregarAba();
       toast.sucesso('Alteração salva.');
+      opcoes.aoSalvar?.();
     });
     tdAcoes.appendChild(btnSalvar);
     tdAcoes.appendChild(btnCancelar);
@@ -190,20 +192,33 @@ export function render(container) {
 
   abasEl.forEach((b) => b.addEventListener('click', () => trocarAba(b.dataset.aba)));
 
-  btnNovo?.addEventListener('click', async () => {
+  async function criarNovoTipo() {
     const cfg = ABAS[abaAtual];
     const base = abaAtual === 'processo'
       ? { codigo: 'NOVO', nome: 'Novo tipo', area: '—', ordem: store.listarTiposProcesso().length }
       : { codigo: 'NOVO', nome: 'Novo tipo', natureza: 'fixo', percentual_sugerido: 0, ordem: store.listarTiposServico().length };
-    const { error } = await supabase.from(cfg.tabela).insert(base);
-    if (error) return toast.erro('Não foi possível criar. Código pode já existir.');
+    const { data, error } = await supabase.from(cfg.tabela).insert(base).select('id').single();
+    if (error) { toast.erro('Não foi possível criar. Código pode já existir.'); return null; }
     await recarregarAba();
     toast.sucesso('Tipo criado — edite os campos.');
-  });
+    return data.id;
+  }
+
+  btnNovo?.addEventListener('click', () => criarNovoTipo());
 
   desinscrever.push(store.on('tiposProcesso', () => { if (abaAtual === 'processo') renderTabela(); }));
   desinscrever.push(store.on('tiposServico', () => { if (abaAtual === 'servico') renderTabela(); }));
 
   atualizarAbas();
   renderTabela();
+
+  if (consumirAbrirNovo() && podeEscrever()) {
+    criarNovoTipo().then((novoId) => {
+      if (!novoId) return;
+      const cfg = ABAS[abaAtual];
+      const item = (abaAtual === 'processo' ? store.listarTiposProcesso() : store.listarTiposServico()).find((t) => t.id === novoId);
+      const tr = corpo.querySelector(`tr[data-id="${novoId}"]`);
+      if (item && tr) entrarModoEdicao(tr, item, cfg, { aoSalvar: voltarParaLancamento });
+    });
+  }
 }

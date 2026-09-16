@@ -24,6 +24,20 @@ export function apenasDigitos(str) {
   return String(str ?? '').replace(/\D/g, '');
 }
 
+// Máscara de moeda pt-BR digitando da direita para a esquerda: cada dígito
+// novo entra nos centavos e empurra o resto ("4500000" -> "R$ 45.000,00").
+// Aceita colar valor com ou sem separadores, pois só os dígitos importam.
+export function mascararMoeda(valor) {
+  const digitos = apenasDigitos(valor).replace(/^0+(?=\d)/, '');
+  const centavos = Number(digitos || '0');
+  return formatarMoeda(centavos / 100);
+}
+
+export function moedaParaNumero(textoFormatado) {
+  const digitos = apenasDigitos(textoFormatado);
+  return Number(digitos || '0') / 100;
+}
+
 export function mascararCpfCnpj(valor) {
   const digitos = apenasDigitos(valor).slice(0, 14);
   if (digitos.length <= 11) {

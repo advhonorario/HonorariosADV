@@ -4,6 +4,7 @@ import { toast } from './componentes/toast.js';
 const advogados = new Map();
 const tiposProcesso = new Map();
 const tiposServico = new Map();
+const clientes = new Map();
 const ouvintes = new Map(); // entidade -> Set<fn>
 
 let canais = [];
@@ -17,6 +18,13 @@ async function recarregarAdvogado(id) {
   if (data) advogados.set(data.id, data);
   else advogados.delete(id);
   notificar('advogados');
+}
+
+async function recarregarCliente(id) {
+  const { data } = await supabase.from('vw_clientes').select('*').eq('id', id).maybeSingle();
+  if (data) clientes.set(data.id, data);
+  else clientes.delete(id);
+  notificar('clientes');
 }
 
 async function recarregarTiposProcesso() {
@@ -36,14 +44,16 @@ async function recarregarTiposServico() {
 export const store = {
   async init() {
     try {
-      const [resAdv, resTP, resTS] = await Promise.all([
+      const [resAdv, resTP, resTS, resCli] = await Promise.all([
         supabase.from('vw_advogados').select('*'),
         supabase.from('tipos_processo').select('*').order('ordem'),
         supabase.from('tipos_servico').select('*').order('ordem'),
+        supabase.from('vw_clientes').select('*'),
       ]);
       (resAdv.data ?? []).forEach((a) => advogados.set(a.id, a));
       (resTP.data ?? []).forEach((t) => tiposProcesso.set(t.id, t));
       (resTS.data ?? []).forEach((t) => tiposServico.set(t.id, t));
+      (resCli.data ?? []).forEach((c) => clientes.set(c.id, c));
     } catch (err) {
       toast.erro('Não foi possível carregar os cadastros. Algumas listas podem ficar vazias.');
     }
@@ -79,7 +89,16 @@ export const store = {
       })
       .subscribe();
 
-    canais = [canalAdv, canalTP, canalTS];
+    const canalCli = supabase
+      .channel('store-clientes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, (payload) => {
+        const id = payload.new?.id ?? payload.old?.id;
+        if (payload.eventType === 'DELETE') { clientes.delete(id); notificar('clientes'); }
+        else recarregarCliente(id);
+      })
+      .subscribe();
+
+    canais = [canalAdv, canalTP, canalTS, canalCli];
   },
 
   destruir() {
@@ -88,6 +107,7 @@ export const store = {
     advogados.clear();
     tiposProcesso.clear();
     tiposServico.clear();
+    clientes.clear();
     ouvintes.clear();
   },
 
@@ -102,12 +122,21 @@ export const store = {
   listarTiposProcesso() { return Array.from(tiposProcesso.values()).sort((a, b) => a.ordem - b.ordem); },
   listarTiposServico() { return Array.from(tiposServico.values()).sort((a, b) => a.ordem - b.ordem); },
 
+  listarClientes({ ativos } = {}) {
+    let lista = Array.from(clientes.values());
+    if (ativos === true) lista = lista.filter((c) => c.ativo);
+    if (ativos === false) lista = lista.filter((c) => !c.ativo);
+    return lista.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  },
+  obterCliente(id) { return clientes.get(id) ?? null; },
+
   // Atualização explícita e imediata do cache logo após uma escrita da própria
   // aba — não depender só do Realtime (rede/latência/publicação mal configurada
   // não devem deixar a lista desatualizada até um F5 manual).
   recarregarAdvogado,
   recarregarTiposProcesso,
   recarregarTiposServico,
+  recarregarCliente,
 
   on(entidade, fn) {
     if (!ouvintes.has(entidade)) ouvintes.set(entidade, new Set());

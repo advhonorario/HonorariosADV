@@ -8,6 +8,7 @@ import { abrirModalMotivo } from '../componentes/modal-motivo.js';
 import { toast } from '../componentes/toast.js';
 import { formatarPercentual, formatarMoeda, mascararCpfCnpj, validarCpfCnpj, debounce } from '../formato.js';
 import { podeEscrever } from '../sessao.js';
+import { consumirAbrirNovo, voltarParaLancamento } from '../navegacao-cadastro.js';
 
 export const titulo = 'Advogados';
 
@@ -104,9 +105,13 @@ export function render(container) {
 
   desinscrever.push(store.on('advogados', renderLista));
   renderLista();
+
+  if (consumirAbrirNovo() && podeEscrever()) {
+    abrirFichaAdvogado(null, voltarParaLancamento);
+  }
 }
 
-function abrirFichaAdvogado(advogado) {
+function abrirFichaAdvogado(advogado, aoCriar) {
   const ehNovo = !advogado;
   let alterado = false;
 
@@ -240,7 +245,7 @@ function abrirFichaAdvogado(advogado) {
           conta: corpo.querySelector('#f-conta').value.trim() || null,
           chave_pix: corpo.querySelector('#f-pix').value.trim() || null,
         };
-        await salvarAdvogado(null, patch, () => { alterado = false; fechar(); });
+        await salvarAdvogado(null, patch, () => { alterado = false; fechar(); aoCriar?.(); });
       });
 
       if (!ehNovo) renderExcecoes(corpo.querySelector('#lista-excecoes'), advogado.id);

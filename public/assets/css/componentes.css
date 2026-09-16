@@ -246,6 +246,45 @@ table.tabela-dados tr.linha-salva td { animation: realce-salvo 1200ms ease-out; 
 .toast-erro { background: var(--carimbo); }
 @keyframes entra-toast { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ===== Barra de rateio (tela Lançar, especificação §7.5/§6.2) ===== */
+.barra-rateio-bloco { width: 100%; }
+.barra-rateio-total { margin-bottom: var(--e3); }
+.barra-rateio {
+  display: flex;
+  width: 100%;
+  height: 40px;
+  border-radius: var(--raio-campo);
+  overflow: hidden;
+  background: var(--papel-baixo);
+  transition: all 120ms ease;
+}
+.barra-rateio-segmento { height: 100%; transition: width 120ms ease; }
+.barra-rateio-segmento.tom-1 { background: var(--tinta-900); }
+.barra-rateio-segmento.tom-2 { background: var(--tinta-700); }
+.barra-rateio-segmento.tom-3 { background: var(--tinta-500); }
+.barra-rateio-segmento.tom-4 { background: var(--tinta-300); }
+.barra-rateio-segmento.tom-5 { background: #A8C0B8; }
+.barra-rateio-segmento.barra-rateio-escritorio {
+  background-image: repeating-linear-gradient(-45deg, var(--papel-baixo), var(--papel-baixo) 4px, var(--linha) 4px, var(--linha) 8px);
+}
+.barra-rateio-estourada { box-shadow: 0 0 0 2px var(--carimbo) inset; }
+.barra-rateio-legenda { margin-top: var(--e4); display: flex; flex-direction: column; gap: var(--e2); }
+.barra-rateio-item {
+  display: grid;
+  grid-template-columns: 12px 1fr auto auto;
+  align-items: center;
+  gap: var(--e2);
+  font-size: 13px;
+}
+.barra-rateio-cor { width: 12px; height: 12px; border-radius: 2px; }
+.barra-rateio-cor.tom-1 { background: var(--tinta-900); }
+.barra-rateio-cor.tom-2 { background: var(--tinta-700); }
+.barra-rateio-cor.tom-3 { background: var(--tinta-500); }
+.barra-rateio-cor.tom-4 { background: var(--tinta-300); }
+.barra-rateio-cor.tom-5 { background: #A8C0B8; }
+.barra-rateio-cor.barra-rateio-escritorio { background-image: repeating-linear-gradient(-45deg, var(--papel-baixo), var(--papel-baixo) 2px, var(--linha) 2px, var(--linha) 4px); }
+.barra-rateio-pct, .barra-rateio-valor { font-variant-numeric: tabular-nums; text-align: right; color: var(--texto-2); }
+
 /* ===== Login ===== */
 .tela-login {
   min-height: 100vh;
