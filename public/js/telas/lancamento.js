@@ -341,9 +341,16 @@ function montarFormulario(area) {
 
   const containerLinhas = area.querySelector('#rateio-linhas');
   estado.linhas.forEach((l) => containerLinhas.appendChild(construirLinhaDom(l)));
-  if (estado.linhas.length === 0) adicionarLinhaRateio();
+  // Linha em branco automática, só pra ter onde começar — não rouba o foco do
+  // Cliente, que é o primeiro campo que o usuário deve preencher.
+  if (estado.linhas.length === 0) adicionarLinhaRateio(undefined, { focar: false });
 
   atualizarBarra();
+
+  // Cliente é o ponto de partida do lançamento; a partir dele é que se resolve
+  // advogado de indicação, tipos sugeridos etc. — foco vai pra lá, não pro
+  // advogado da linha de rateio em branco.
+  if (!estado.clienteId) area.querySelector('#combo-cliente input')?.focus();
 }
 
 // ===== Combobox de cliente/processo/tipos =====
@@ -453,7 +460,7 @@ async function aoSelecionarCliente(area, clienteId) {
     });
     estado.linhaIndicacaoUid = linha.uid;
   }
-  if (estado.linhas.length === 0) adicionarLinhaRateio();
+  if (estado.linhas.length === 0) adicionarLinhaRateio(undefined, { focar: false });
 
   recalcularSugestoesTodasLinhas();
 }
@@ -474,14 +481,14 @@ function novaLinhaEstado(dados) {
   };
 }
 
-function adicionarLinhaRateio(dadosIniciais) {
+function adicionarLinhaRateio(dadosIniciais, { focar = !dadosIniciais } = {}) {
   const linha = novaLinhaEstado(dadosIniciais);
   estado.linhas.push(linha);
   const containerLinhas = elFicha?.querySelector('#rateio-linhas');
   if (containerLinhas) {
     const el = construirLinhaDom(linha);
     containerLinhas.appendChild(el);
-    if (!dadosIniciais) el.querySelector('.combobox input')?.focus();
+    if (focar) el.querySelector('.combobox input')?.focus();
   }
   atualizarBarra();
   return linha;
