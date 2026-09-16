@@ -81,6 +81,80 @@
   .tela-lancamento-grade { grid-template-columns: 1fr; }
 }
 
+/* ===== Editando lançamento existente (Fase 4) ===== */
+.ficha-editando { border-color: var(--tinta-500); border-width: 2px; }
+.editando-aviso {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--papel-baixo);
+  color: var(--tinta-700);
+  border-radius: var(--raio-campo);
+  padding: var(--e2) var(--e3);
+  margin-bottom: var(--e5);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ===== Filtro rápido (chips) ===== */
+.filtro-chips { display: flex; gap: var(--e2); }
+.chip {
+  background: var(--papel-alto);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-pilula);
+  padding: var(--e1) var(--e3);
+  font-size: 12px;
+  color: var(--texto-2);
+}
+.chip.ativo { background: var(--tinta-700); border-color: var(--tinta-700); color: #fff; }
+
+/* ===== Registro de alterações (§7.7) ===== */
+.logs-dia { margin-bottom: var(--e6); }
+.logs-dia-titulo { font-size: 16px; margin-bottom: var(--e3); color: var(--texto-2); }
+.log-item {
+  background: var(--papel-alto);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-campo);
+  margin-bottom: var(--e2);
+  overflow: hidden;
+}
+.log-item-cabecalho {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 56px auto 140px 1fr 1fr;
+  gap: var(--e3);
+  align-items: center;
+  padding: var(--e3) var(--e4);
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+}
+.log-item-cabecalho:hover { background: var(--papel-baixo); }
+.log-hora { color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.log-autor { color: var(--texto-2); font-weight: 500; }
+.log-ref { color: var(--texto); }
+.log-tela { color: var(--texto-3); font-size: 12px; }
+.log-motivo { color: var(--texto-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-detalhe { padding: 0 var(--e4) var(--e4); border-top: 1px solid var(--linha); }
+.log-motivo-completo { color: var(--texto-2); font-size: 13px; margin: var(--e3) 0; }
+.log-diff-cabecalho {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  font-size: 12px;
+  color: var(--texto-3);
+  padding: var(--e2) 0;
+}
+.tabela-diff { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tabela-diff td { padding: var(--e2) var(--e2) var(--e2) 0; border-bottom: 1px solid var(--linha); vertical-align: top; }
+.tabela-diff td:first-child { color: var(--texto-2); font-weight: 500; width: 25%; }
+.linha-diff-destaque td:not(:first-child) { background: var(--ambar-bg); }
+.log-tecnico { margin-top: var(--e3); font-size: 12px; }
+.log-tecnico pre { background: var(--papel-baixo); padding: var(--e3); border-radius: var(--raio-campo); overflow-x: auto; }
+@media (max-width: 900px) {
+  .log-item-cabecalho { grid-template-columns: 1fr; gap: var(--e1); }
+}
+
 .ficha-lancamento {
   background: var(--papel-alto);
   border: 1px solid var(--linha);

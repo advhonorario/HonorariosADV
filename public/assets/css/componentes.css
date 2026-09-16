@@ -18,6 +18,7 @@
 .botao-perigo { background: var(--carimbo); color: #fff; }
 .botao-perigo:hover { filter: brightness(0.9); }
 .botao-texto { background: transparent; color: var(--tinta-700); padding: var(--e1) var(--e2); }
+.botao-texto:disabled { color: var(--texto-3); cursor: not-allowed; }
 
 /* ===== Campos de formulário ===== */
 .campo {

@@ -5,6 +5,10 @@ const MOTIVOS_FREQUENTES = {
   ativar_cliente: ['Novo processo/relacionamento retomado', 'Inativação por engano', 'Outro'],
   percentual_padrao: ['Renegociação de contrato', 'Correção de cadastro', 'Promoção/mudança de papel', 'Outro'],
   remover_indicacao: ['Indicação encerrada por acordo', 'Erro de cadastro', 'Outro'],
+  lancamento: [
+    'Correção de digitação', 'Correção de nota fiscal', 'Renegociação com o cliente',
+    'Acordo de rateio revisto', 'Estorno por devolução', 'Lançamento em duplicidade', 'Outro',
+  ],
 };
 
 const MINIMO_CARACTERES = 10;
@@ -12,7 +16,7 @@ const MINIMO_CARACTERES = 10;
 /**
  * @returns {Promise<string|null>} motivo confirmado, ou null se cancelado
  */
-export function abrirModalMotivo({ titulo, contexto, diferencas = [], categoriaMotivos }) {
+export function abrirModalMotivo({ titulo, contexto, diferencas = [], categoriaMotivos, ehEstorno = false }) {
   return new Promise((resolve) => {
     const fundo = document.createElement('div');
     fundo.className = 'modal-fundo';
@@ -92,9 +96,10 @@ export function abrirModalMotivo({ titulo, contexto, diferencas = [], categoriaM
     const botaoCancelar = document.createElement('button');
     botaoCancelar.className = 'botao botao-secundario';
     botaoCancelar.textContent = 'Cancelar';
+    const ehAcaoEstorno = ehEstorno || titulo.toLowerCase().includes('estorn');
     const botaoSalvar = document.createElement('button');
-    botaoSalvar.className = 'botao botao-primario';
-    botaoSalvar.textContent = titulo.toLowerCase().includes('estorn') ? 'Estornar lançamento' : 'Salvar alteração';
+    botaoSalvar.className = `botao ${ehAcaoEstorno ? 'botao-perigo' : 'botao-primario'}`;
+    botaoSalvar.textContent = ehAcaoEstorno ? 'Estornar lançamento' : 'Salvar alteração';
     botaoSalvar.disabled = true;
     rodape.appendChild(botaoCancelar);
     rodape.appendChild(botaoSalvar);

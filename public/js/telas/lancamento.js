@@ -4,10 +4,11 @@ import { criarCombobox } from '../componentes/combobox.js';
 import { criarBarraRateio } from '../componentes/barra-rateio.js';
 import { criarTabela } from '../componentes/tabela.js';
 import { criarSelo } from '../componentes/selo.js';
+import { abrirModalMotivo } from '../componentes/modal-motivo.js';
 import { toast } from '../componentes/toast.js';
 import { formatarMoeda, formatarData, formatarPercentual, mascararMoeda, moedaParaNumero } from '../formato.js';
 import { resolverPercentualSugerido, calcularRateioMaiorResto } from '../rateio.js';
-import { podeEscrever } from '../sessao.js';
+import { podeEscrever, sessao } from '../sessao.js';
 import { irCriarERetornar, consumirAutoRetomar } from '../navegacao-cadastro.js';
 
 export const titulo = 'Lançar';
@@ -37,9 +38,13 @@ let comboCliente = null;
 let comboProcesso = null;
 let comboTipoProcesso = null;
 let comboTipoServico = null;
+let estadoOriginal = null; // snapshot plano do lançamento em edição, pra diff/dirty-check
+let filtroRecentes = 'todos';
 
 function estadoVazio() {
   return {
+    id: null,
+    numero: null,
     clienteId: null,
     processoId: null,
     tipoProcessoId: null,
@@ -91,13 +96,29 @@ export function render(container) {
       ` : ''}
       <div id="area-formulario"></div>
       <div class="lancamentos-recentes">
-        <h2>Lançamentos recentes</h2>
+        <div class="tela-cabecalho">
+          <h2>Lançamentos recentes</h2>
+          <div class="filtro-chips" id="filtro-recentes">
+            <button type="button" class="chip ativo" data-filtro="todos">Todos</button>
+            <button type="button" class="chip" data-filtro="hoje">Meus de hoje</button>
+            <button type="button" class="chip" data-filtro="alterados">Alterados</button>
+            <button type="button" class="chip" data-filtro="estornados">Estornados</button>
+          </div>
+        </div>
         <div id="lista-recentes"></div>
       </div>
     </div>
   `;
 
   const area = container.querySelector('#area-formulario');
+  filtroRecentes = 'todos';
+  container.querySelectorAll('#filtro-recentes .chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      filtroRecentes = chip.dataset.filtro;
+      container.querySelectorAll('#filtro-recentes .chip').forEach((c) => c.classList.toggle('ativo', c === chip));
+      renderRecentes(container.querySelector('#lista-recentes'));
+    });
+  });
 
   container.querySelector('#btn-descartar-rascunho')?.addEventListener('click', () => {
     limparRascunho();
@@ -145,6 +166,11 @@ function textoAvisoRascunho(rascunho) {
 // ===== Rascunho automático (sessionStorage) =====
 
 function gravarRascunho() {
+  // O rascunho automático protege lançamentos NOVOS ainda não salvos — uma
+  // edição em andamento não entra aqui (não dá pra recompor `estadoOriginal`
+  // a partir do sessionStorage, e o "o que muda" do pop-up de motivo ficaria
+  // vazio ao retomar).
+  if (estado.id) return;
   // A tela sempre nasce com uma linha de rateio em branco (sem advogado) —
   // isso sozinho não é "conteúdo digitado", senão toda visita à tela vira
   // rascunho depois de 2s mesmo sem o usuário ter feito nada.
@@ -188,13 +214,17 @@ function aoTeclaGlobal(ev) {
     acionarSalvar({ eNovo: false });
   } else if (ev.ctrlKey && ev.key === 'Enter') {
     ev.preventDefault();
-    acionarSalvar({ eNovo: true });
+    acionarSalvar({ eNovo: !estado.id });
   } else if (ev.altKey && ev.key.toLowerCase() === 'a') {
     ev.preventDefault();
     adicionarLinhaRateio();
   } else if (ev.altKey && ev.key.toLowerCase() === 'd') {
     ev.preventDefault();
     duplicarUltimoSalvo();
+  } else if (ev.key === 'Escape' && estado.id) {
+    ev.preventDefault();
+    const area = document.querySelector('#area-formulario');
+    if (area) cancelarEdicao(area);
   }
 }
 
@@ -203,7 +233,13 @@ function aoTeclaGlobal(ev) {
 function montarFormulario(area) {
   area.innerHTML = `
     <div class="tela-lancamento-grade">
-      <div class="ficha-lancamento">
+      <div class="ficha-lancamento${estado.id ? ' ficha-editando' : ''}">
+        ${estado.id ? `
+          <div class="editando-aviso">
+            <span>Editando #${String(estado.numero).padStart(6, '0')}</span>
+            <button type="button" class="botao-texto" id="btn-cancelar-edicao">Cancelar edição</button>
+          </div>
+        ` : ''}
         <div class="campo-grupo">
           <div class="rotulo-linha">
             <label class="rotulo-campo" for="combo-cliente">Cliente</label>
@@ -212,8 +248,23 @@ function montarFormulario(area) {
           <div id="combo-cliente"></div>
         </div>
         <div class="campo-grupo">
-          <label class="rotulo-campo" for="combo-processo">Processo</label>
+          <div class="rotulo-linha">
+            <label class="rotulo-campo" for="combo-processo">Processo</label>
+            <button type="button" class="botao-texto botao-novo-cadastro" id="btn-novo-processo" ${estado.clienteId ? '' : 'disabled'}>+ novo processo</button>
+          </div>
           <div id="combo-processo"></div>
+          <div id="bloco-novo-processo" hidden>
+            <div class="campo-deducao" style="margin-top: var(--e2)">
+              <div class="campo-grupo">
+                <label class="rotulo-campo" for="f-novo-processo-numero">Número CNJ (opcional)</label>
+                <input class="campo" id="f-novo-processo-numero" placeholder="0000000-00.0000.0.00.0000" />
+              </div>
+              <div style="display:flex; gap: var(--e3)">
+                <button type="button" class="botao botao-secundario" id="btn-cancelar-novo-processo">Cancelar</button>
+                <button type="button" class="botao botao-primario" id="btn-criar-processo">Criar processo</button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="gaveta-linha">
           <div>
@@ -273,8 +324,8 @@ function montarFormulario(area) {
       <div class="painel-rateio" id="painel-rateio">
         <div id="erro-soma"></div>
         <div class="painel-rateio-acoes">
-          <button type="button" class="botao botao-primario" id="btn-salvar">Salvar (Ctrl+S)</button>
-          <button type="button" class="botao botao-secundario" id="btn-salvar-novo">Salvar e novo (Ctrl+↵)</button>
+          <button type="button" class="botao botao-primario" id="btn-salvar">${estado.id ? 'Salvar alteração (Ctrl+S)' : 'Salvar (Ctrl+S)'}</button>
+          ${estado.id ? '' : '<button type="button" class="botao botao-secundario" id="btn-salvar-novo">Salvar e novo (Ctrl+↵)</button>'}
         </div>
       </div>
     </div>
@@ -291,12 +342,13 @@ function montarFormulario(area) {
   montarComboProcesso(area, []);
   montarComboTipos(area);
 
-  area.querySelectorAll('.botao-novo-cadastro').forEach((btn) => {
+  area.querySelectorAll('.botao-novo-cadastro[data-rota]').forEach((btn) => {
     btn.addEventListener('click', () => {
       gravarRascunho();
       irCriarERetornar(btn.dataset.rota);
     });
   });
+  montarNovoProcesso(area);
 
   area.querySelector('#f-competencia').addEventListener('input', (ev) => { estado.dataCompetencia = ev.target.value; });
   area.querySelector('#f-pagamento').addEventListener('input', (ev) => { estado.dataPagamento = ev.target.value; });
@@ -337,7 +389,8 @@ function montarFormulario(area) {
 
   area.querySelector('#btn-add-linha').addEventListener('click', () => adicionarLinhaRateio());
   area.querySelector('#btn-salvar').addEventListener('click', () => acionarSalvar({ eNovo: false }));
-  area.querySelector('#btn-salvar-novo').addEventListener('click', () => acionarSalvar({ eNovo: true }));
+  area.querySelector('#btn-salvar-novo')?.addEventListener('click', () => acionarSalvar({ eNovo: true }));
+  area.querySelector('#btn-cancelar-edicao')?.addEventListener('click', () => cancelarEdicao(area));
 
   const containerLinhas = area.querySelector('#rateio-linhas');
   estado.linhas.forEach((l) => containerLinhas.appendChild(construirLinhaDom(l)));
@@ -370,7 +423,12 @@ function montarComboCliente(area) {
 
 async function repovoarProcessos(area, clienteId) {
   if (!clienteId) { montarComboProcesso(area, []); return; }
-  const { data } = await supabase.from('processos').select('*').eq('cliente_id', clienteId).eq('encerrado', false);
+  let query = supabase.from('processos').select('*').eq('cliente_id', clienteId);
+  // Se o lançamento (em edição/duplicação) já está vinculado a um processo,
+  // ele precisa aparecer na lista mesmo que tenha sido encerrado depois —
+  // senão o combobox mostra em branco apesar do dado estar salvo por baixo.
+  query = estado.processoId ? query.or(`encerrado.eq.false,id.eq.${estado.processoId}`) : query.eq('encerrado', false);
+  const { data } = await query;
   montarComboProcesso(area, data ?? []);
 }
 
@@ -397,6 +455,40 @@ function montarComboProcesso(area, processos) {
     },
   });
   alvo.appendChild(comboProcesso.el);
+}
+
+// Não existe tela de cadastro de processos na especificação — o combobox só
+// lista processos já existentes em `processos`. Esse mini-formulário inline
+// cobre o caso comum (cliente novo, ainda sem processo cadastrado) sem
+// precisar de uma tela inteira só pra isso.
+function montarNovoProcesso(area) {
+  const btnAbrir = area.querySelector('#btn-novo-processo');
+  const bloco = area.querySelector('#bloco-novo-processo');
+  const inputNumero = area.querySelector('#f-novo-processo-numero');
+
+  btnAbrir.addEventListener('click', () => {
+    if (!estado.clienteId) return;
+    bloco.hidden = false;
+    inputNumero.value = '';
+    inputNumero.focus();
+  });
+  area.querySelector('#btn-cancelar-novo-processo').addEventListener('click', () => { bloco.hidden = true; });
+  area.querySelector('#btn-criar-processo').addEventListener('click', async () => {
+    if (!estado.tipoProcessoId) {
+      toast.erro('Escolha o tipo de processo antes de cadastrar um novo processo.');
+      return;
+    }
+    const { data, error } = await supabase.from('processos').insert({
+      cliente_id: estado.clienteId,
+      tipo_processo_id: estado.tipoProcessoId,
+      numero_cnj: inputNumero.value.trim() || null,
+    }).select('*').single();
+    if (error) { toast.erro('Não foi possível criar o processo. ' + error.message); return; }
+    bloco.hidden = true;
+    estado.processoId = data.id;
+    await repovoarProcessos(area, estado.clienteId);
+    toast.sucesso('Processo criado e vinculado ao lançamento.');
+  });
 }
 
 function montarComboTipos(area) {
@@ -426,6 +518,9 @@ function montarComboTipos(area) {
 async function aoSelecionarCliente(area, clienteId) {
   estado.clienteId = clienteId;
   estado.processoId = null;
+  const btnNovoProcesso = area.querySelector('#btn-novo-processo');
+  if (btnNovoProcesso) btnNovoProcesso.disabled = !clienteId;
+  area.querySelector('#bloco-novo-processo')?.setAttribute('hidden', '');
   if (!clienteId) { montarComboProcesso(area, []); return; }
 
   const cliente = store.obterCliente(clienteId);
@@ -474,7 +569,7 @@ function novaLinhaEstado(dados) {
     advogadoId: dados?.advogadoId ?? null,
     papel: dados?.papel ?? 'responsavel',
     percentual: dados?.percentual ?? 0,
-    percentualSugerido: dados?.percentual ?? 0,
+    percentualSugerido: dados?.percentualSugerido ?? dados?.percentual ?? 0,
     origem: dados?.origem ?? 'manual',
     bloqueado: dados?.bloqueado ?? true,
     excecoes: [],
@@ -724,6 +819,65 @@ function atualizarBarra() {
 
 // ===== Salvar =====
 
+function nomeCliente(id) { return id ? (store.obterCliente(id)?.nome ?? '—') : '—'; }
+function nomeTipoProcesso(id) { return id ? (store.listarTiposProcesso().find((t) => t.id === id)?.nome ?? '—') : '—'; }
+function nomeTipoServico(id) { return id ? (store.listarTiposServico().find((t) => t.id === id)?.nome ?? '—') : '—'; }
+
+// Diferenças entre o snapshot carregado (estadoOriginal) e o estado atual —
+// alimenta o bloco "o que muda" do pop-up de motivo (§7.6) e o dirty-check
+// que decide se Esc/"Cancelar edição" precisa confirmar antes de descartar.
+function calcularDiferencas() {
+  if (!estadoOriginal) return [];
+  const diffs = [];
+  const registrar = (campo, de, para) => { if (String(de) !== String(para)) diffs.push({ campo, de, para }); };
+
+  registrar('Cliente', nomeCliente(estadoOriginal.clienteId), nomeCliente(estado.clienteId));
+  registrar('Tipo de processo', nomeTipoProcesso(estadoOriginal.tipoProcessoId), nomeTipoProcesso(estado.tipoProcessoId));
+  registrar('Tipo de serviço', nomeTipoServico(estadoOriginal.tipoServicoId), nomeTipoServico(estado.tipoServicoId));
+  registrar('Competência', formatarData(estadoOriginal.dataCompetencia), formatarData(estado.dataCompetencia));
+  registrar('Pagamento', formatarData(estadoOriginal.dataPagamento), formatarData(estado.dataPagamento));
+  registrar('Forma de pagamento', estadoOriginal.formaPagamento, estado.formaPagamento);
+  registrar('Valor bruto', formatarMoeda(estadoOriginal.valorBrutoCentavos / 100), formatarMoeda(estado.valorBrutoCentavos / 100));
+  registrar('Valor base', formatarMoeda(estadoOriginal.valorBaseCentavos / 100), formatarMoeda(estado.valorBaseCentavos / 100));
+  registrar('Descrição', estadoOriginal.descricao || '—', estado.descricao || '—');
+
+  const rateioAntes = new Map(estadoOriginal.linhas.map((l) => [`${l.advogadoId}:${l.papel}`, l]));
+  const rateioDepois = new Map(estado.linhas.filter((l) => l.advogadoId).map((l) => [`${l.advogadoId}:${l.papel}`, l]));
+  const chaves = new Set([...rateioAntes.keys(), ...rateioDepois.keys()]);
+  chaves.forEach((chave) => {
+    const antes = rateioAntes.get(chave);
+    const depois = rateioDepois.get(chave);
+    const nomeAdv = `${store.obterAdvogado((depois ?? antes).advogadoId)?.nome ?? 'Advogado'} (${PAPEL_LABEL[(depois ?? antes).papel] ?? (depois ?? antes).papel})`;
+    if (antes && !depois) diffs.push({ campo: nomeAdv, de: formatarPercentual(antes.percentual), para: 'removido' });
+    else if (!antes && depois) diffs.push({ campo: nomeAdv, de: 'novo', para: formatarPercentual(depois.percentual) });
+    else if (Number(antes.percentual) !== Number(depois.percentual)) {
+      diffs.push({ campo: `${nomeAdv} %`, de: formatarPercentual(antes.percentual), para: formatarPercentual(depois.percentual) });
+    }
+  });
+
+  return diffs;
+}
+
+function formularioAlterado() {
+  return !!estadoOriginal && calcularDiferencas().length > 0;
+}
+
+// Guarda usada sempre que algo vai SUBSTITUIR o `estado` atual em memória
+// (editar outro lançamento, duplicar, etc.) — evita descartar em silêncio um
+// lançamento novo com dados reais digitados ou uma edição com alterações.
+function podeDescartarEstadoAtual(mensagem) {
+  if (estado.id) return !formularioAlterado() || window.confirm(mensagem);
+  const temConteudo = estado.clienteId || estado.valorBrutoCentavos > 0 || estado.linhas.some((l) => l.advogadoId);
+  return !temConteudo || window.confirm(mensagem);
+}
+
+function cancelarEdicao(area) {
+  if (!podeDescartarEstadoAtual('Existem alterações não salvas. Descartar e sair da edição?')) return;
+  estado = estadoVazio();
+  estadoOriginal = null;
+  montarFormulario(area);
+}
+
 function montarPayload() {
   const base = valorBaseAtual();
   const linhasValidas = estado.linhas.filter((l) => l.advogadoId);
@@ -732,6 +886,7 @@ function montarPayload() {
   if (estado.descontarBase && estado.motivoDeducao?.trim()) observacaoPartes.push(`Dedução da base: ${estado.motivoDeducao.trim()}`);
 
   const p_lancamento = {
+    id: estado.id ?? null,
     data_competencia: estado.dataCompetencia || hojeISO(),
     data_pagamento: estado.dataPagamento || null,
     cliente_id: estado.clienteId,
@@ -771,13 +926,27 @@ async function acionarSalvar({ eNovo }) {
   const erro = validarAntesDeSalvar();
   if (erro) { toast.erro(erro); return; }
 
+  const editando = !!estado.id;
+  let motivo = null;
+  if (editando) {
+    // Lançamento já salvo: motivo é obrigatório mesmo que nada tenha mudado
+    // de fato — é a barreira do RPC (008_rpcs.sql), o pop-up só antecipa isso.
+    motivo = await abrirModalMotivo({
+      titulo: 'Confirmar alteração',
+      contexto: `Lançamento #${String(estado.numero).padStart(6, '0')} — ${nomeCliente(estado.clienteId)}`,
+      diferencas: calcularDiferencas(),
+      categoriaMotivos: 'lancamento',
+    });
+    if (motivo === null) return;
+  }
+
   const { p_lancamento, p_rateio } = montarPayload();
   elBtnSalvar.disabled = true;
   const areaFicha = elFicha;
   areaFicha?.classList.add('linha-salvando');
 
   const { data: id, error } = await supabase.rpc('rpc_salvar_lancamento', {
-    p_lancamento, p_rateio, p_motivo: null,
+    p_lancamento, p_rateio, p_motivo: motivo,
   });
 
   areaFicha?.classList.remove('linha-salvando');
@@ -787,8 +956,8 @@ async function acionarSalvar({ eNovo }) {
     return;
   }
 
-  toast.sucesso('Lançamento salvo.');
-  ultimoSalvo = { p_lancamento: { ...p_lancamento }, p_rateio: p_rateio.map((r) => ({ ...r })) };
+  toast.sucesso(editando ? 'Alteração salva.' : 'Lançamento salvo.');
+  if (!editando) ultimoSalvo = { p_lancamento: { ...p_lancamento }, p_rateio: p_rateio.map((r) => ({ ...r })) };
   limparRascunho();
 
   const clienteId = estado.clienteId;
@@ -799,6 +968,7 @@ async function acionarSalvar({ eNovo }) {
   const area = container?.querySelector('#area-formulario');
   if (area) {
     estado = estadoVazio();
+    estadoOriginal = null;
     if (eNovo) {
       estado.clienteId = clienteId;
       estado.tipoProcessoId = tipoProcessoId;
@@ -819,42 +989,138 @@ async function acionarSalvar({ eNovo }) {
   }
 }
 
-function duplicarUltimoSalvo() {
-  if (!ultimoSalvo || !podeEscrever()) { toast.erro('Nenhum lançamento salvo nesta sessão ainda.'); return; }
+// Carrega `dados`/`rateio` (formato snake_case de `lancamentos`/`lancamento_rateio`,
+// seja de `ultimoSalvo.p_lancamento` ou de uma linha de `recentesCache`) como um
+// lançamento NOVO no formulário — usado por "duplicar" em ambos os casos.
+function carregarComoNovoLancamento(dados, rateio) {
   const area = document.querySelector('#area-formulario');
   if (!area) return;
+  if (!podeDescartarEstadoAtual('Existem dados não salvos no formulário. Descartar e duplicar este lançamento?')) return;
 
   estado = estadoVazio();
-  const { p_lancamento, p_rateio } = ultimoSalvo;
-  estado.clienteId = p_lancamento.cliente_id;
-  estado.processoId = p_lancamento.processo_id;
-  estado.tipoProcessoId = p_lancamento.tipo_processo_id;
-  estado.tipoServicoId = p_lancamento.tipo_servico_id;
-  estado.formaPagamento = p_lancamento.forma_pagamento || FORMAS_PAGAMENTO[0];
-  estado.valorBrutoCentavos = Math.round(Number(p_lancamento.valor_bruto) * 100);
-  estado.descontarBase = Number(p_lancamento.valor_base) !== Number(p_lancamento.valor_bruto);
-  estado.valorBaseCentavos = Math.round(Number(p_lancamento.valor_base) * 100);
-  estado.descricao = p_lancamento.descricao || '';
-  estado.linhas = p_rateio.map((r) => novaLinhaEstado({
+  estadoOriginal = null;
+  estado.clienteId = dados.cliente_id;
+  estado.processoId = dados.processo_id;
+  estado.tipoProcessoId = dados.tipo_processo_id;
+  estado.tipoServicoId = dados.tipo_servico_id;
+  estado.formaPagamento = dados.forma_pagamento || FORMAS_PAGAMENTO[0];
+  estado.valorBrutoCentavos = Math.round(Number(dados.valor_bruto) * 100);
+  estado.descontarBase = Number(dados.valor_base) !== Number(dados.valor_bruto);
+  estado.valorBaseCentavos = Math.round(Number(dados.valor_base) * 100);
+  estado.descricao = dados.descricao || '';
+  estado.linhas = (rateio ?? []).map((r) => novaLinhaEstado({
     advogadoId: r.advogado_id, papel: r.papel, percentual: Number(r.percentual),
     origem: r.origem_percentual, bloqueado: false,
   }));
 
   montarFormulario(area);
   repovoarProcessos(area, estado.clienteId);
+}
+
+function duplicarUltimoSalvo() {
+  if (!ultimoSalvo || !podeEscrever()) { toast.erro('Nenhum lançamento salvo nesta sessão ainda.'); return; }
+  carregarComoNovoLancamento(ultimoSalvo.p_lancamento, ultimoSalvo.p_rateio);
   toast.sucesso('Último lançamento duplicado — confira os dados antes de salvar.');
 }
 
-// ===== Lançamentos recentes (somente leitura nesta fase — edição/estorno ficam para a Fase 4) =====
+function duplicarLancamento(l) {
+  if (!podeEscrever()) return;
+  carregarComoNovoLancamento(l, l.lancamento_rateio);
+  toast.sucesso('Lançamento duplicado — confira os dados antes de salvar.');
+}
+
+// Carrega um lançamento já salvo no formulário em modo edição — clique numa
+// linha da tabela de recentes (§7.5: "clique na linha → abre em modo edição").
+function carregarParaEdicao(l) {
+  if (!podeEscrever()) return;
+  if (l.status === 'estornado') { toast.erro('Lançamento estornado não pode ser editado; duplique para lançar de novo.'); return; }
+  const area = document.querySelector('#area-formulario');
+  if (!area) return;
+  if (!podeDescartarEstadoAtual('Existem dados não salvos no formulário. Descartar e editar este lançamento?')) return;
+
+  estado = {
+    ...estadoVazio(),
+    id: l.id,
+    numero: l.numero,
+    clienteId: l.cliente_id,
+    processoId: l.processo_id,
+    tipoProcessoId: l.tipo_processo_id,
+    tipoServicoId: l.tipo_servico_id,
+    dataCompetencia: l.data_competencia,
+    dataPagamento: l.data_pagamento || '',
+    formaPagamento: l.forma_pagamento || FORMAS_PAGAMENTO[0],
+    valorBrutoCentavos: Math.round(Number(l.valor_bruto) * 100),
+    descontarBase: Number(l.valor_base) !== Number(l.valor_bruto),
+    valorBaseCentavos: Math.round(Number(l.valor_base) * 100),
+    descricao: l.descricao || '',
+    linhas: (l.lancamento_rateio ?? []).map((r) => novaLinhaEstado({
+      advogadoId: r.advogado_id, papel: r.papel, percentual: Number(r.percentual),
+      percentualSugerido: r.percentual_sugerido != null ? Number(r.percentual_sugerido) : Number(r.percentual),
+      origem: r.origem_percentual, bloqueado: false,
+    })),
+  };
+  estadoOriginal = JSON.parse(JSON.stringify({
+    ...estado,
+    linhas: estado.linhas.map((ln) => ({ advogadoId: ln.advogadoId, papel: ln.papel, percentual: ln.percentual })),
+  }));
+
+  montarFormulario(area);
+  repovoarProcessos(area, estado.clienteId);
+  area.querySelector('.ficha-lancamento')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function estornarLancamento(l) {
+  if (!podeEscrever()) return;
+  const motivo = await abrirModalMotivo({
+    titulo: 'Estornar lançamento',
+    contexto: `Lançamento #${String(l.numero).padStart(6, '0')} — ${l.clientes?.nome ?? ''}`,
+    categoriaMotivos: 'lancamento',
+    ehEstorno: true,
+  });
+  if (motivo === null) return;
+
+  const { error } = await supabase.rpc('rpc_estornar_lancamento', { p_id: l.id, p_motivo: motivo });
+  if (error) { toast.erro(error.message); return; }
+  toast.sucesso('Lançamento estornado.');
+
+  recentesCache = await carregarRecentes();
+  const listaRecentesEl = document.querySelector('#lista-recentes');
+  if (listaRecentesEl) renderRecentes(listaRecentesEl);
+
+  // Se o lançamento estornado era o que estava aberto pra edição, sai do modo edição.
+  if (estado.id === l.id) {
+    estado = estadoVazio();
+    estadoOriginal = null;
+    const area = document.querySelector('#area-formulario');
+    if (area) montarFormulario(area);
+  }
+}
+
+// ===== Lançamentos recentes =====
 
 async function carregarRecentes() {
   const { data, error } = await supabase
     .from('lancamentos')
-    .select('id, numero, data_competencia, valor_bruto, status, clientes(nome), tipos_processo(nome), lancamento_rateio(advogado_id, papel, valor)')
+    .select(`
+      id, numero, data_competencia, data_pagamento, cliente_id, processo_id,
+      tipo_processo_id, tipo_servico_id, descricao, valor_bruto, valor_base,
+      forma_pagamento, status, observacao, motivo_estorno, criado_por, criado_em, atualizado_em,
+      clientes(nome), tipos_processo(nome), tipos_servico(nome),
+      lancamento_rateio(advogado_id, papel, percentual, percentual_sugerido, origem_percentual, valor)
+    `)
     .order('criado_em', { ascending: false })
     .limit(20);
   if (error) { toast.erro('Não foi possível carregar os lançamentos recentes.'); return []; }
   return data ?? [];
+}
+
+function aplicarFiltroRecentes(lista) {
+  if (filtroRecentes === 'hoje') {
+    return lista.filter((l) => l.criado_por === sessao.usuario?.id && (l.criado_em ?? '').slice(0, 10) === hojeISO());
+  }
+  if (filtroRecentes === 'alterados') return lista.filter((l) => !!l.atualizado_em);
+  if (filtroRecentes === 'estornados') return lista.filter((l) => l.status === 'estornado');
+  return lista;
 }
 
 function iniciais(nome) {
@@ -872,19 +1138,23 @@ const SELO_STATUS = {
 
 function renderRecentes(container) {
   container.innerHTML = '';
-  if (recentesCache.length === 0) {
-    container.innerHTML = '<p class="tela-vazia">Nenhum lançamento registrado ainda.</p>';
+  const dados = aplicarFiltroRecentes(recentesCache);
+  if (dados.length === 0) {
+    container.innerHTML = '<p class="tela-vazia">Nenhum lançamento encontrado.</p>';
     return;
   }
   tabelaRecentes = criarTabela({
     colunas: [
       { rotulo: 'Número' }, { rotulo: 'Data' }, { rotulo: 'Cliente' },
-      { rotulo: 'Tipo' }, { rotulo: 'Valor' }, { rotulo: 'Advogados' }, { rotulo: 'Status' },
+      { rotulo: 'Tipo' }, { rotulo: 'Valor' }, { rotulo: 'Advogados' }, { rotulo: 'Status' }, { rotulo: 'Ações' },
     ],
-    linhas: recentesCache,
+    linhas: dados,
     chave: 'id',
     classeLinha: (l) => (l.status === 'estornado' ? 'linha-estornada' : ''),
+    aoClicarLinha: podeEscrever() ? (l) => carregarParaEdicao(l) : undefined,
     renderLinha(tr, l) {
+      if (l.status === 'estornado' && l.motivo_estorno) tr.title = `Motivo do estorno: ${l.motivo_estorno}`;
+
       const avatares = document.createElement('div');
       avatares.className = 'avatares-rateio';
       (l.lancamento_rateio ?? []).forEach((r) => {
@@ -909,6 +1179,29 @@ function renderRecentes(container) {
       const cfg = SELO_STATUS[l.status] ?? SELO_STATUS.confirmado;
       tdStatus.appendChild(criarSelo({ texto: cfg.texto, tom: cfg.tom }));
       tr.appendChild(tdStatus);
+
+      const tdAcoes = document.createElement('td');
+      tdAcoes.className = 'acoes-linha';
+      if (podeEscrever()) {
+        const btnDuplicar = document.createElement('button');
+        btnDuplicar.className = 'botao-texto';
+        btnDuplicar.textContent = 'Duplicar';
+        btnDuplicar.addEventListener('click', () => duplicarLancamento(l));
+        tdAcoes.appendChild(btnDuplicar);
+        if (l.status !== 'estornado') {
+          const btnEstornar = document.createElement('button');
+          btnEstornar.className = 'botao-texto';
+          btnEstornar.textContent = 'Estornar';
+          btnEstornar.addEventListener('click', () => estornarLancamento(l));
+          tdAcoes.appendChild(btnEstornar);
+        }
+      }
+      const linkHistorico = document.createElement('a');
+      linkHistorico.className = 'botao-texto';
+      linkHistorico.href = `#/logs/${l.id}`;
+      linkHistorico.textContent = 'Histórico';
+      tdAcoes.appendChild(linkHistorico);
+      tr.appendChild(tdAcoes);
     },
   });
   container.appendChild(tabelaRecentes.el);
