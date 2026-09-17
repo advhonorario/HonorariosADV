@@ -247,6 +247,21 @@ table.tabela-dados tr.linha-salva td { animation: realce-salvo 1200ms ease-out; 
 .toast-erro { background: var(--carimbo); }
 @keyframes entra-toast { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ===== Multi-select (painel, especificação §8.3) ===== */
+.multi-select { min-width: 200px; }
+.multi-select-chips { display: flex; flex-wrap: wrap; gap: var(--e1); margin-top: var(--e2); }
+.chip-removivel { display: inline-flex; align-items: center; gap: var(--e1); }
+.chip-removivel button {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  opacity: .7;
+}
+.chip-removivel button:hover { opacity: 1; }
+
 /* ===== Barra de rateio (tela Lançar, especificação §7.5/§6.2) ===== */
 .barra-rateio-bloco { width: 100%; }
 .barra-rateio-total { margin-bottom: var(--e3); }

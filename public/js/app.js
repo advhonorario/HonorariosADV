@@ -37,8 +37,10 @@ async function carregarSprite() {
 }
 
 function normalizarHash() {
-  const [rota] = location.hash.split('/').slice(0, 3).join('/').split('?');
-  const partes = location.hash.split('/');
+  // Tira a query string antes de fatiar por "/" — sem isso, "#/painel?de=..."
+  // (filtros do painel guardados na URL, especificação §8.3) não batia com
+  // nenhuma chave de ROTAS e caía sempre na rota padrão.
+  const partes = location.hash.split('?')[0].split('/');
   return `#/${partes[1] ?? ''}`;
 }
 

@@ -6,6 +6,9 @@ Senhas/
 *.pem
 *.key
 credentials.json
+# Referências visuais com dados financeiros reais (nomes, honorários) —
+# repositório é público, nunca commitar.
+Modelo/
 
 # Node / Vercel functions
 node_modules/
