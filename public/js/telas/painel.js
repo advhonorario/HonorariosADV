@@ -458,9 +458,14 @@ async function renderGraficos(container, series, indicadores, telaContainer) {
   const blocoVariacaoAnual = criarPainelGrafico('g-variacao-anual', 'Variação plurianual (escritório × advogados)');
   const blocoDivisaoIndicador = criarPainelGrafico('g-divisao-indicador', 'Divisão por indicação (por indicador)');
   const blocoFaixaValor = criarPainelGrafico('g-faixa-valor', 'Divisão por faixa de valor');
+  const blocoCadAdvogados = criarPainelGrafico('g-cad-advogados', 'Evolução de advogados');
+  const blocoCadClientes = criarPainelGrafico('g-cad-clientes', 'Evolução de clientes');
+  const blocoCadProcessos = criarPainelGrafico('g-cad-processos', 'Evolução de processos');
+  const blocoCadLancamentos = criarPainelGrafico('g-cad-lancamentos', 'Evolução de lançamentos');
   [
     blocoEvolucao, blocoMapa, blocoRanking, blocoPareto, blocoIndicacao, blocoComposicao,
     blocoProcessosAno, blocoVariacaoAnual, blocoDivisaoIndicador, blocoFaixaValor,
+    blocoCadAdvogados, blocoCadClientes, blocoCadProcessos, blocoCadLancamentos,
   ].forEach((b) => container.appendChild(b));
 
   desenharEvolucaoMensal(ec, series.evolucao_mensal, telaContainer);
@@ -473,6 +478,7 @@ async function renderGraficos(container, series, indicadores, telaContainer) {
   desenharVariacaoAnual(ec, series.variacao_anual);
   desenharDivisaoIndicador(ec, series.divisao_por_indicador);
   desenharDivisaoFaixaValor(ec, series.divisao_faixa_valor);
+  desenharEvolucaoCadastros(ec, series.evolucao_cadastros);
 
   renderMaioresHonorarios(container, series.maiores_honorarios_advogado);
 }
@@ -715,6 +721,38 @@ function desenharProcessosPorAno(ec, dados) {
       label: { show: true, position: 'top', color: CORES.texto2, fontSize: 11, fontWeight: 600 },
     }],
   });
+}
+
+function rotuloDataSnapshot(dataIso) {
+  const d = new Date(`${dataIso}T00:00:00`);
+  return `${String(d.getDate()).padStart(2, '0')}/${MESES_ABREV[d.getMonth()]}`;
+}
+
+// Um gráfico por item (pedido do usuário 2026-09-18), não um combinado — as
+// escalas de advogados/clientes/processos/lançamentos são bem diferentes
+// entre si, então juntar tudo num eixo só esconderia a variação dos menores.
+function desenharEvolucaoCadastros(ec, dados) {
+  const eixoX = dados.map((d) => rotuloDataSnapshot(d.data));
+  const desenhar = (id, chave, cor) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const g = ec.init(el);
+    graficos[id] = g;
+    g.setOption({
+      ...baseGrafico(),
+      tooltip: { trigger: 'axis' },
+      xAxis: { type: 'category', data: eixoX, axisLine: { lineStyle: { color: CORES.linha } } },
+      yAxis: eixoValorOculto(),
+      series: [{
+        type: 'line', data: dados.map((d) => d[chave]), itemStyle: { color: cor }, smooth: true,
+        label: { show: true, position: 'top', color: CORES.texto2, fontSize: 11, fontWeight: 600 },
+      }],
+    });
+  };
+  desenhar('g-cad-advogados', 'advogados', CORES.tinta500);
+  desenhar('g-cad-clientes', 'clientes', CORES.tinta700);
+  desenhar('g-cad-processos', 'processos', CORES.ambar);
+  desenhar('g-cad-lancamentos', 'lancamentos', CORES.tinta900);
 }
 
 function desenharVariacaoAnual(ec, dados) {
